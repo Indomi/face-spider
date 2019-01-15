@@ -3,8 +3,13 @@ const fs = require('fs')
 const download = require('download')
 const MAX_PAGE = 10
 
+const arg = process.argv
+const start = arg[2]
+const end = arg[3]
+
 let urlPerfix = 'http://image.baidu.com/channel/listjson?rn=200&tag1=%E6%98%8E%E6%98%9F&tag2=%E5%85%A8%E9%83%A8&ie=utf8&pn='
 let doneImg = 0
+let doneImgArr = []
 
 function getImgUrlList(pageNum) {
     return new Promise((resolve, reject) => {
@@ -19,23 +24,28 @@ function getImgUrlList(pageNum) {
             })
             console.log(`图片数量为：${imgArr.length}`);
             imgArr.map((item, idx) => {
-                return download(item).then(data => {
-                    let temp = item.split('/')
-                    let relativeName = temp[temp.length - 1]
-                    let name = relativeName.split('.')[0] + Date.parse(new Date()) + '.jpg'
-                    setTimeout(function() {
-                        fs.writeFile('dist/'+name, data, {
-                            encoding: 'binary'
-                        }, () => {
-                            console.log(`${name}下载成功`);
-                            doneImg += 1;
-                            console.log(`总共下载数量为：${doneImg}`);
-                            if(doneImg === 20) {
-                                return resolve(pageNum + 1)
-                            }
-                        })  
-                    }, 500)
-                })
+                let temp = item.split('/')
+                    let name = temp[temp.length - 1]
+                if(doneImgArr.indexOf(name) >= 0) {
+                    console.log('图片已存在，跳过');
+                    return;
+                }else {
+                    return download(item).then(data => {
+                        setTimeout(function() {
+                            fs.writeFile('dist1/'+name, data, {
+                                encoding: 'binary'
+                            }, () => {
+                                console.log(`${name}下载成功`);
+                                doneImg += 1;
+                                doneImgArr.push(name)
+                                console.log(`总共下载数量为：${doneImg}`);
+                                if(doneImg === 200) {
+                                    return resolve(pageNum + 1)
+                                }
+                            })  
+                        }, 500)
+                    })
+                }
             })
             
         }).catch(err => {
@@ -48,15 +58,8 @@ let line = [0,1,2,3,4,5,6,7,8,9,10]
 
 let promiseArr = []
 
-for(let i=1;i < 10000;i++) {
+for(let i=start;i < end;i++) {
     promiseArr.push(getImgUrlList(i))
 }
 
 Promise.all(promiseArr).then(() => {})
-// async function doIt() {
-//     const i = await getImgUrlList(0)
-//     console.log(i);
-//     const i2 = await getImgUrlList(i)
-// }
-
-// doIt()
