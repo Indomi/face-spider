@@ -3,7 +3,7 @@ const fs = require('fs')
 const download = require('download')
 const MAX_PAGE = 10
 
-let urlPerfix = 'http://image.baidu.com/channel/listjson?rn=100&tag1=%E6%98%8E%E6%98%9F&tag2=%E5%85%A8%E9%83%A8&ie=utf8&pn='
+let urlPerfix = 'http://image.baidu.com/channel/listjson?rn=200&tag1=%E6%98%8E%E6%98%9F&tag2=%E5%85%A8%E9%83%A8&ie=utf8&pn='
 let doneImg = 0
 
 function getImgUrlList(pageNum) {
@@ -47,7 +47,7 @@ let line = [0,1,2,3,4,5,6,7,8,9,10]
 
 let promiseArr = []
 
-for(let i=1;i < 10;i++) {
+for(let i=1;i < 10000;i++) {
     promiseArr.push(getImgUrlList(i))
 }
 
