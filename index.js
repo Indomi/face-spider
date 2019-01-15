@@ -10,6 +10,7 @@ const end = arg[3]
 let urlPerfix = 'http://image.baidu.com/channel/listjson?rn=200&tag1=%E6%98%8E%E6%98%9F&tag2=%E5%85%A8%E9%83%A8&ie=utf8&pn='
 let doneImg = 0
 let doneImgArr = []
+let skipCount = 0
 
 function getImgUrlList(pageNum) {
     return new Promise((resolve, reject) => {
@@ -27,7 +28,8 @@ function getImgUrlList(pageNum) {
                 let temp = item.split('/')
                     let name = temp[temp.length - 1]
                 if(doneImgArr.indexOf(name) >= 0) {
-                    console.log('图片已存在，跳过');
+                    skipCount++;
+                    console.log('图片已存在，跳过，共跳过' + skipCount + '次');
                     return;
                 }else {
                     return download(item).then(data => {
