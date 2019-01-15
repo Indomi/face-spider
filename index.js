@@ -21,7 +21,7 @@ function getImgUrlList(pageNum) {
             imgArr.map((item, idx) => {
                 return download(item).then(data => {
                     let temp = item.split('/')
-                    let name = temp[temp.length - 1]
+                    let name = temp[temp.length - 1] + Date.parse(new Date())
                     setTimeout(function() {
                         fs.writeFile('dist/'+name, data, {
                             encoding: 'binary'
