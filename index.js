@@ -1,67 +1,91 @@
-const request = require('request-promise')
-const fs = require('fs')
-const download = require('download')
-const MAX_PAGE = 10
+const request = require('request-promise');
+const download = require('download');
+const fs = require('fs');
+const $URL = require('./gb2312.js');
+const arg = process.argv;
+const key = arg[2];
+const progressBar = require('progress');
 
-const arg = process.argv
-const start = arg[2]
-const end = arg[3]
+let urlPerfix = 'https://pic.sogou.com/pics?mode=1&reqType=ajax&reqFrom=result&tn=0'
 
-let urlPerfix = 'http://image.baidu.com/channel/listjson?rn=200&tag1=%E6%98%8E%E6%98%9F&tag2=%E5%85%A8%E9%83%A8&ie=utf8&pn='
-let doneImg = 0
-let doneImgArr = []
-let skipCount = 0
+let query = $URL.encode(key);
 
-function getImgUrlList(pageNum) {
-    return new Promise((resolve, reject) => {
-        
-        return request(urlPerfix + pageNum).then(res => {
-            let data = JSON.parse(res).data
-            let imgArr = []
-            data.map(item => {
-                if(item.image_url) {
-                    imgArr.push(item.image_url)
+let loadedImgCount = 0;
+let errorImgCount = 0;
+let skipImgCount = 0;
+
+function getImgPromise(start) {
+    return new Promise((resolve) => {
+        try {
+            const url = `${urlPerfix}&start=${start}&query=${query}`;
+            request(url).then(res => {
+                res = JSON.parse(res);
+                if (!res.isForbiden) {
+                    let data = res.items;
+                    let planList = [];
+                    if (data) {
+                        data.map(item => {
+                            if (item.pic_url) {
+                                planList.push(item.pic_url);
+                            }
+                        })
+                    }
+                    return planList;
                 }
-            })
-            console.log(`图片数量为：${imgArr.length}`);
-            imgArr.map((item, idx) => {
-                let temp = item.split('/')
-                    let name = temp[temp.length - 1]
-                if(doneImgArr.indexOf(name) >= 0) {
-                    skipCount++;
-                    console.log('图片已存在，跳过，共跳过' + skipCount + '次');
-                    return;
-                }else {
-                    return download(item).then(data => {
-                        setTimeout(function() {
-                            fs.writeFile('dist1/'+name, data, {
-                                encoding: 'binary'
-                            }, () => {
-                                console.log(`${name}下载成功`);
-                                doneImg += 1;
-                                doneImgArr.push(name)
-                                console.log(`总共下载数量为：${doneImg}`);
-                                if(doneImg === 200) {
-                                    return resolve(pageNum + 1)
-                                }
-                            })  
-                        }, 500)
-                    })
-                }
-            })
-            
-        }).catch(err => {
-            return reject(err)
-        })
-    })
+            }).then(planList => {
+                let fileList = fs.readdirSync('./assets');
+                console.log(`>> 已存图片总数为：${fileList.length}`);
+                const bar = new progressBar('>> download [:bar] :percent\n', {
+                    total: planList.length
+                });
+                let itemsOnPage = planList.length;
+                let count = 0;
+                let percentOnPage = 0;
+                const stop = setInterval(() => {
+                    count++;
+                    if(count === 25) {
+                        clearInterval(stop)
+                        console.log(`>> 请求超时25s，跳转下一次请求，一共完成${loadedImgCount}次下载，一共跳过${skipImgCount}次，一共失败${errorImgCount}次`);
+                        return getImgPromise(start + 48)
+                    }
+                }, 1000);
+                planList.map((item, idx) => {
+                    let a = item.split('/');
+                    let name = a[a.length - 1];
+                    if (fileList.indexOf(name) >= 0) {
+                        skipImgCount++;
+                        percentOnPage++;
+                        bar.tick();
+                    } else {
+                        download(item, './assets', {
+                            retries: 6
+                        }).then(res => {
+                            bar.tick();
+                            loadedImgCount++;
+                            percentOnPage++;
+                            if (percentOnPage === itemsOnPage) {
+                                clearInterval(stop);
+                                console.log(`>> 跳转下一次请求，一共完成${loadedImgCount}次下载，一共跳过${skipImgCount}次，一共失败${errorImgCount}次`);
+                                return getImgPromise(start + 48);
+                            }
+                        }).catch(err => {
+                            errorImgCount++;
+                            percentOnPage++;
+                            if (percentOnPage === itemsOnPage) {
+                                clearInterval(stop);
+                                console.log(`>> 跳转下一次请求，一共完成${loadedImgCount}次下载，一共跳过${skipImgCount}次，一共失败${errorImgCount}次`);
+                                return getImgPromise(start + 48);
+                            }
+                        })
+                    }
+                });
+            });
+        } catch (error) {
+            console.log('----------------------error--------------------');
+            return getImgPromise(start + 48);
+        }
+    });
 }
 
-let line = [0,1,2,3,4,5,6,7,8,9,10]
 
-let promiseArr = []
-
-for(let i=start;i < end;i++) {
-    promiseArr.push(getImgUrlList(i))
-}
-
-Promise.all(promiseArr).then(() => {})
+getImgPromise(0)

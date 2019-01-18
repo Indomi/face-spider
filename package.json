@@ -16,6 +16,7 @@
     "cheerio": "^1.0.0-rc.2",
     "download": "^7.1.0",
     "iconv-lite": "^0.4.24",
+    "progress": "^2.0.3",
     "request": "^2.88.0",
     "request-promise": "^4.2.2"
   }
